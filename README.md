@@ -29,12 +29,48 @@ pnpm add kysely godot-sqlite-kysely
 import { Kysely } from 'kysely';
 import GodotSQLiteKyselyDialect from 'godot-sqlite-kysely';
 
-export default new Kysely({
+export const db = new Kysely<Database>({
   dialect: new GodotSQLiteKyselyDialect(
-    { path: 'res://data/sqlite.db' }
+    {
+      path: this.dbName,
+      workerModule: 'src/database/worker',
+    },
   ),
 });
 ```
+
+See [Kysely's Getting Started documentation](https://kysely.dev/docs/getting-started) for more information.
+
+> [!NOTE]
+> Use `GodotSQLiteKyselyDialect` as above in place of `PostgresDialect` in the Getting Started documentation.
+
+## Using a worker thread
+
+Kysely's APIs are asynchronous; however, godot-sqlite performs queries synchronously. Assuming you're using Kysely in a regular GodotJS script this means SQLite
+queries will happen on Godot's main thread. SQLite is fast, so this is fine for many use cases, e.g., saving game state at explicit save points. However, we also
+provide an option to perform queries on another thread using a [GodotJS worker](https://github.com/godotjs/GodotJS/wiki/Worker). This is particularly helpful for
+use-cases where you wish to write to the database during regular gameplay e.g., continuously synchronizing game state to disk.
+
+There's some additional setup to make this work because GodotJS workers require you to provide a module name to the worker on start-up.
+
+1. Create a worker script anywhere in your Godot project e.g. `res://src/database/worker.ts`
+2. Add the following contents:
+  ```ts
+  import { initializeWorker } from 'godot-sqlite-kysely/worker';
+  
+  initializeWorker();
+  ```
+3. Provide the module name (essentially a resource path without "res://" or a file extension) when configuring `GodotSQLiteKyselyDialect`:
+  ```ts
+  export const db = new Kysely<Database>({
+    dialect: new GodotSQLiteKyselyDialect(
+      {
+        path: this.dbName,
+        workerModule: 'src/database/worker',
+      },
+    ),
+  });
+  ```
 
 ## Configuration
 
@@ -42,9 +78,7 @@ Typically, you'll provide a configuration for connection creation. However, if y
 you may provide a `SQLite` connection instead.
 
 ```typescript
-export type GodotSQLiteKyselyConfig = {
-  connection?: never;
-
+export interface GodotSQLiteKyselyConnectionConfig {
   /** Default extension that is automatically appended to the `path`-variable whenever **no** extension is detected/given.
    *   ***NOTE:** If database files without extension are desired, this variable has to be set to "" (= an empty string) as to skip this automatic procedure entirely.*
    * Default: db
@@ -62,18 +96,37 @@ export type GodotSQLiteKyselyConfig = {
   /** Enabling this property opens the database in read-only modus & allows databases to be packaged inside of the PCK. To make this possible, a custom [url=https://www.sqlite.org/vfs.html]VFS[/url] is employed which internally takes care of all the file handling using the Godot API.
    * Default: false
    * */
-  readOnly?: boolean
+  readOnly?: boolean;
 
   /** The verbosityLevel determines the amount of logging to the Godot console that is handy for debugging your (possibly faulty) SQLite queries.
    *   ***NOTE:** Verbose and higher levels might considerably slow down your queries due to excessive logging.*
    * Default: Normal
    */
   verbosityLevel?: number;
-} | {
+}
+
+export type GodotSQLiteKyselyConfig =
+  | (GodotSQLiteKyselyConnectionConfig & {
+  connection?: never;
+
+  /** Execute SQLite queries on another thread (a GodotJS JSWorker). Query results are transferred from the worker back to the parent
+   * JavaScript environment. This introduces some overhead per query, but may be preferable to blocking the main thread whilst SQLite
+   * performs queries.
+   *
+   * The string specified must refer to a module name. For example, if your worker script exists at res://src/database/worker.ts then you
+   * should provide the string 'src/database/worker'.
+   *
+   * The worker module itself must call initializeWorker().
+   *
+   * Default: undefined
+   */
+  workerModule?: string;
+})
+  | {
   /** Existing godot-sqlite client/connection. The connection must be open.
    */
   connection: SQLite;
-}
+};
 ```
 
 ## License

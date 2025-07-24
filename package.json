@@ -17,16 +17,6 @@
     "watch": "tsc -w"
   },
   "exports": {
-    "./utils/*": {
-      "import": {
-        "default": "./dist/esm/utils/*.js",
-        "types": "./dist/types/esm/utils/*.d.ts"
-      },
-      "require": {
-        "default": "./dist/cjs/utils/*.js",
-        "types": "./dist/types/cjs/utils/*.d.ts"
-      }
-    },
     "./*": {
       "import": {
         "default": "./dist/esm/*/index.js",
@@ -35,6 +25,16 @@
       "require": {
         "default": "./dist/cjs/*/index.js",
         "types": "./dist/types/cjs/*/index.d.ts"
+      }
+    },
+    ".": {
+      "import": {
+        "default": "./dist/esm/index.js",
+        "types": "./dist/types/esm/index.d.ts"
+      },
+      "require": {
+        "default": "./dist/cjs/index.js",
+        "types": "./dist/types/cjs/index.d.ts"
       }
     }
   },

@@ -2,7 +2,9 @@ import { DatabaseConnection, Driver, TransactionSettings } from 'kysely';
 
 import { GodotSQLiteKyselyConnection } from './GodotSQLiteKyselyConnection';
 import type { GodotSQLiteKyselyConfig } from './types';
-import { SQLite } from 'godot.lib.api';
+import { GodotSQLiteKyselyWorkerConnection } from './GodotSQLiteKyselyWorkerConnection';
+import { GodotSQLiteKyselySyncConnection } from './GodotSQLiteKyselySyncConnection';
+import { createSQLiteConnection } from './utils';
 
 export class GodotSQLiteKyselyDriver implements Driver {
   #config: GodotSQLiteKyselyConfig;
@@ -21,28 +23,11 @@ export class GodotSQLiteKyselyDriver implements Driver {
       const config = this.#config;
 
       if (config.connection) {
-        connection = new GodotSQLiteKyselyConnection(config.connection);
+        connection = new GodotSQLiteKyselySyncConnection(config.connection);
       } else {
-        const {
-          defaultExtension = 'db',
-          foreignKeys = true,
-          path,
-          readOnly = false,
-          verbosityLevel = SQLite.VerbosityLevel.NORMAL,
-        } = config;
-
-        const sqlite = new SQLite();
-        sqlite.default_extension = defaultExtension;
-        sqlite.foreign_keys = foreignKeys;
-        sqlite.path = path;
-        sqlite.read_only = readOnly;
-        sqlite.verbosity_level = verbosityLevel;
-
-        if (!sqlite.open_db()) {
-          throw new Error(`Failed to open godot-sqlite connection: ${sqlite.error_message}`);
-        }
-
-        connection = new GodotSQLiteKyselyConnection(sqlite);
+        connection = config.workerModule
+          ? new GodotSQLiteKyselyWorkerConnection(config, config.workerModule)
+          : new GodotSQLiteKyselySyncConnection(createSQLiteConnection(config));
       }
 
       this.#connection = connection;
@@ -72,7 +57,7 @@ export class GodotSQLiteKyselyDriver implements Driver {
       return;
     }
 
-    this.#connection.sqlite.close_db();
+    this.#connection.close();
     this.#connection = undefined;
   }
 }

@@ -1,3 +1,13 @@
+interface Console {
+  assert(condition?: boolean, ...data: any[]): void;
+  debug(...data: any[]): void;
+  error(...data: any[]): void;
+  info(...data: any[]): void;
+  log(...data: any[]): void;
+  warn(...data: any[]): void;
+}
+declare const console: Console;
+
 // Subset of Godot core + godot-sqlite types
 // Using godot.lib.api instead of godot so that this library is camel-case
 // binding agnostic.
@@ -196,4 +206,27 @@ declare module 'godot.lib.api' {
 		get query_result_by_reference(): GArray;
 		set query_result_by_reference(value: GArray);
 	}
+}
+
+
+declare module "godot.worker" {
+  class JSWorker {
+    constructor(path: string);
+
+    postMessage(message: any): void;
+    terminate(): void;
+
+    onready?: () => void;
+    onmessage?: (message: any) => void;
+  }
+
+  // only available in worker scripts
+  const JSWorkerParent: {
+    onmessage?: (message: any) => void,
+
+    close(): void,
+
+    postMessage(message: any): void,
+  } | undefined;
+
 }
