@@ -1,0 +1,68 @@
+{
+  "name": "godot-sqlite-kysely",
+  "version": "0.0.1",
+  "description": "",
+  "files": [
+    "src",
+    "dist",
+    "!dist/configs"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "postbuild": "pnpm exec tsx ./scripts/post-build.ts",
+    "prettier": "prettier \"src/**/*.ts\"",
+    "prettier:fix": "prettier \"src/**/*.ts\" --write",
+    "watch": "tsc -w"
+  },
+  "exports": {
+    "./utils/*": {
+      "import": {
+        "default": "./dist/esm/utils/*.js",
+        "types": "./dist/types/esm/utils/*.d.ts"
+      },
+      "require": {
+        "default": "./dist/cjs/utils/*.js",
+        "types": "./dist/types/cjs/utils/*.d.ts"
+      }
+    },
+    "./*": {
+      "import": {
+        "default": "./dist/esm/*/index.js",
+        "types": "./dist/types/esm/*/index.d.ts"
+      },
+      "require": {
+        "default": "./dist/cjs/*/index.js",
+        "types": "./dist/types/cjs/*/index.d.ts"
+      }
+    }
+  },
+  "license": "MIT",
+  "keywords": [
+    "godot",
+    "kysely",
+    "godot kysely sqlite",
+    "kysely godot sqlite",
+    "sqlite",
+    "godot sqlite"
+  ],
+  "author": "Breaka Club",
+  "packageManager": "pnpm@10.12.1",
+  "prettier": {
+    "singleQuote": true
+  },
+  "peerDependencies": {
+    "kysely": ">=0.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "~22.14.0",
+    "eslint": "^9.31.0",
+    "eslint-config-prettier": "10.1.8",
+    "kysely": "^0.28.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.0-dev.20250614",
+    "typescript-eslint": "^8.38.0"
+  },
+  "repository": "github:BreakaClub/godot-sqlite-kysely"
+}

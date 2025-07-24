@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "alwaysStrict": true,
+    "composite": true,
+    "esModuleInterop": true,
+    "exactOptionalPropertyTypes": false,
+    "incremental": true,
+    "isolatedModules": true,
+    "lib": [
+      "es2022"
+    ],
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": false,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": true,
+    "rootDir": "../src",
+    "skipLibCheck": true,
+    "strict": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true
+  },
+  "exclude": [
+    "../node_modules"
+  ],
+  "include": [
+    "../src/**/*.ts",
+    "../src/**/*.tsx"
+  ]
+}
