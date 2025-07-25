@@ -1,7 +1,7 @@
 {
   "name": "godot-sqlite-kysely",
-  "version": "0.0.1",
-  "description": "",
+  "version": "1.0.0",
+  "description": "Kysely dialect for godot-sqlite. Adds SQLite support to Godot/GodotJS.",
   "files": [
     "src",
     "dist",
@@ -45,7 +45,8 @@
     "godot kysely sqlite",
     "kysely godot sqlite",
     "sqlite",
-    "godot sqlite"
+    "godot sqlite",
+    "godotjs"
   ],
   "author": "Breaka Club",
   "packageManager": "pnpm@10.12.1",
@@ -60,6 +61,7 @@
     "eslint": "^9.31.0",
     "eslint-config-prettier": "10.1.8",
     "kysely": "^0.28.3",
+    "semantic-release": "^24.2.7",
     "tsx": "^4.19.4",
     "typescript": "^5.9.0-dev.20250614",
     "typescript-eslint": "^8.38.0"
