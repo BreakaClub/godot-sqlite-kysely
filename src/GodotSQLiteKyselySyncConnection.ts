@@ -13,7 +13,9 @@ export class GodotSQLiteKyselySyncConnection implements DatabaseConnection {
   async executeQuery<R>(compiledQuery: CompiledQuery<unknown>): Promise<QueryResult<R>> {
     const sqlite = this.#sqlite;
 
-    sqlite.query_with_bindings(compiledQuery.sql, GArray.create(compiledQuery.parameters));
+    if (!sqlite.query_with_bindings(compiledQuery.sql, GArray.create(compiledQuery.parameters))) {
+      throw new Error(sqlite.error_message);
+    }
 
     return {
       insertId: compiledQuery.query.kind === 'InsertQueryNode' ? BigInt(sqlite.last_insert_rowid) : undefined,

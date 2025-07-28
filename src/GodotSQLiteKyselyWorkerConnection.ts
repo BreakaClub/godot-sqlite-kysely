@@ -64,8 +64,7 @@ export class GodotSQLiteKyselyWorkerConnection implements DatabaseConnection {
         this.#queryCallbacks.delete(queryIndex);
 
         if (typeof result === 'string') {
-          console.error(`Query ${queryIndex} failed. Query: ${query}. Error: ${result}`);
-          reject(new Error(result));
+          reject(new Error(`${result}. Query: ${query} (${parameters.join(', ')}). `));
         } else {
           resolve(result as QueryResult<R>);
         }

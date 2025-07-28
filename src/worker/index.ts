@@ -7,7 +7,7 @@ let sqlite: null | SQLite = null;
 
 export function initializeWorker() {
   if (!JSWorkerParent) {
-    throw new Error('initializeWorker() can only be called from a JSWorker');
+    return;
   }
 
   JSWorkerParent.close = () => {
@@ -41,13 +41,19 @@ export function initializeWorker() {
     }
 
     try {
-      sqlite.query_with_bindings(query, GArray.create(parameters));
-      JSWorkerParent!.postMessage({
-        id,
-        result: {
-          rows: getResultRows(sqlite),
-        },
-      });
+      if (sqlite.query_with_bindings(query, GArray.create(parameters))) {
+        JSWorkerParent!.postMessage({
+          id,
+          result: {
+            rows: getResultRows(sqlite),
+          },
+        });
+      } else {
+        JSWorkerParent!.postMessage({
+          id,
+          result: sqlite.error_message,
+        });
+      }
     } catch (e: unknown) {
       JSWorkerParent!.postMessage({
         id,
