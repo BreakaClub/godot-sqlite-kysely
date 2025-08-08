@@ -32,7 +32,7 @@ export class GodotSQLiteKyselySyncConnection implements DatabaseConnection {
   }
 
   async beginTransaction(): Promise<void> {
-    const savepointName = `sp${++this.#nestedTransactionIndex}`;
+    const savepointName = `sp${this.#nestedTransactionIndex++}`;
 
     if (!this.#sqlite.query(`savepoint ${savepointName}`)) {
       throw new Error(`beginTransaction (${savepointName}) failed: ${this.#sqlite.error_message}`);

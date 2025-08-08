@@ -83,7 +83,7 @@ export class GodotSQLiteKyselyWorkerConnection implements DatabaseConnection {
   }
 
   async beginTransaction(): Promise<void> {
-    const savepointName = `sp${++this.#nestedTransactionIndex}`;
+    const savepointName = `sp${this.#nestedTransactionIndex++}`;
     this.#postQuery(`savepoint ${savepointName}`, []);
   }
 
