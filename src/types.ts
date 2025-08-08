@@ -31,7 +31,17 @@ export type GodotSQLiteKyselyConfig =
   | (GodotSQLiteKyselyConnectionConfig & {
       connection?: never;
 
-      /** Execute SQLite queries on another thread (a GodotJS JSWorker). Query results are transferred from the worker back to the parent
+      /**
+       * By default, when posting a message (i.e., queries) to the worker thread, parameters are deep/recursively duplicated by GodotJS.
+       * Since Godot uses a copy-on-write model this is reasonably fast since "duplicating" a PackedArrayBuffer, does not copy the
+       * underlying buffer. However, if you're doing bulk inserts, for example, the recursive duplication may cause unwanted overhead.
+       *
+       * Enabling transferQueries skips the copying, instead references are shared. This is mostly only useful in niche circumstances where
+       * you're able to provide your query parameters as a GArray that you received from native code.
+       */
+      transferQueries?: boolean;
+
+      /** Execute SQLite queries on another thread (a GodotJS JSWorker). Query results are posted from the worker back to the parent
        * JavaScript environment. This introduces some overhead per query, but may be preferable to blocking the main thread whilst SQLite
        * performs queries.
        *

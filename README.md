@@ -33,7 +33,7 @@ export const db = new Kysely<Database>({
   dialect: new GodotSQLiteKyselyDialect(
     {
       path: this.dbName,
-      workerModule: 'src/database/worker',
+      workerModule: 'src/sqlite.worker',
     },
   ),
 });
@@ -53,7 +53,7 @@ use-cases where you wish to write to the database during regular gameplay e.g., 
 
 There's some additional setup to make this work because GodotJS workers require you to provide a module name to the worker on start-up.
 
-1. Create a worker script anywhere in your Godot project e.g. `res://src/database/worker.ts`
+1. Create a worker script anywhere in your Godot project e.g. `res://src/sqlite.worker.ts`
 2. Add the following contents:
   ```ts
   import { initializeWorker } from 'godot-sqlite-kysely/worker';
@@ -66,7 +66,7 @@ There's some additional setup to make this work because GodotJS workers require 
     dialect: new GodotSQLiteKyselyDialect(
       {
         path: this.dbName,
-        workerModule: 'src/database/worker',
+        workerModule: 'src/sqlite.worker',
       },
     ),
   });
@@ -107,26 +107,36 @@ export interface GodotSQLiteKyselyConnectionConfig {
 
 export type GodotSQLiteKyselyConfig =
   | (GodotSQLiteKyselyConnectionConfig & {
-  connection?: never;
+      connection?: never;
 
-  /** Execute SQLite queries on another thread (a GodotJS JSWorker). Query results are transferred from the worker back to the parent
-   * JavaScript environment. This introduces some overhead per query, but may be preferable to blocking the main thread whilst SQLite
-   * performs queries.
-   *
-   * The string specified must refer to a module name. For example, if your worker script exists at res://src/database/worker.ts then you
-   * should provide the string 'src/database/worker'.
-   *
-   * The worker module itself must call initializeWorker().
-   *
-   * Default: undefined
-   */
-  workerModule?: string;
-})
+      /**
+       * By default, when posting a message (i.e., queries) to the worker thread, parameters are deep/recursively duplicated by GodotJS.
+       * Since Godot uses a copy-on-write model this is reasonably fast since "duplicating" a PackedArrayBuffer, does not copy the
+       * underlying buffer. However, if you're doing bulk inserts, for example, the recursive duplication may cause unwanted overhead.
+       *
+       * Enabling transferQueries skips the copying, instead references are shared. This is mostly only useful in niche circumstances where
+       * you're able to provide your query parameters as a GArray that you received from native code.
+       */
+      transferQueries?: boolean;
+
+      /** Execute SQLite queries on another thread (a GodotJS JSWorker). Query results are posted from the worker back to the parent
+       * JavaScript environment. This introduces some overhead per query, but may be preferable to blocking the main thread whilst SQLite
+       * performs queries.
+       *
+       * The string specified must refer to a module name. For example, if your worker script exists at res://src/database/worker.ts then you
+       * should provide the string 'src/database/worker'.
+       *
+       * The worker module itself must call initializeWorker().
+       *
+       * Default: undefined
+       */
+      workerModule?: string;
+    })
   | {
-  /** Existing godot-sqlite client/connection. The connection must be open.
-   */
-  connection: SQLite;
-};
+      /** Existing godot-sqlite client/connection. The connection must be open.
+       */
+      connection: SQLite;
+    };
 ```
 
 ## License

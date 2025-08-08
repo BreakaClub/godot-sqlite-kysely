@@ -1,58 +1,109 @@
-import { CompiledQuery, DatabaseConnection, QueryResult } from 'kysely';
+import { GArray } from 'godot.lib.api';
 import { JSWorker } from 'godot.worker';
+import { CompiledQuery, DatabaseConnection, QueryResult } from 'kysely';
 import { GodotSQLiteKyselyConnectionConfig } from './types';
-
-interface ResultMessage {
-  id: number;
-  result: string | QueryResult<unknown>;
-}
+import { WorkerRequest, WorkerResponse } from './worker/messaging';
 
 export class GodotSQLiteKyselyWorkerConnection implements DatabaseConnection {
   #nestedTransactionIndex = 0;
   #queryCallbacks = new Map<number, (result: string | QueryResult<unknown>) => void>();
   #queryIndex = 0;
+  #transferParameters = false;
   #worker: JSWorker;
   #workerPromise: null | Promise<void>;
 
-  constructor(config: GodotSQLiteKyselyConnectionConfig, workerModule: string) {
+  #postRequest(message: WorkerRequest) {
+    if (this.#transferParameters && message.type === 'query') {
+      this.#worker.postMessage(message, Array.isArray(message.parameters) ? message.parameters : [message.parameters]);
+    } else {
+      this.#worker.postMessage(message);
+    }
+  }
+
+  constructor(config: GodotSQLiteKyselyConnectionConfig & { transferQueries?: boolean }, workerModule: string) {
+    this.#transferParameters = config.transferQueries ?? false;
     this.#worker = new JSWorker(workerModule);
     this.#workerPromise = new Promise<void>((resolve, reject) => {
-      this.#worker.onmessage = (message: true | string | ResultMessage) => {
-        if (message === true) {
-          this.#workerPromise = null;
-          resolve();
-          return;
+      this.#worker.onmessage = (response: WorkerResponse) => {
+        switch (response.type) {
+          case 'initializationError':
+            console.error(`Worker SQLite connection error: ${response}`);
+            this.#workerPromise = null;
+            reject(new Error(response.message));
+            break;
+
+          case 'initialized':
+            this.#workerPromise = null;
+            resolve();
+            break;
+
+          case 'queryError': {
+            const { id, message } = response;
+            const callback = this.#queryCallbacks.get(id);
+
+            if (!callback) {
+              console.error(`Received query error for unknown query index: ${id}`);
+              break;
+            }
+
+            callback(message);
+            break;
+          }
+
+          case 'queryResult': {
+            const { id, result } = response;
+            const callback = this.#queryCallbacks.get(id);
+
+            if (!callback) {
+              console.error(`Received query result for unknown query index: ${id}`);
+              break;
+            }
+
+            callback(result);
+            break;
+          }
+
+          case 'terminated':
+            break;
+
+          default:
+            console.error('Unhandled worker response: ' + JSON.stringify(response satisfies never, null, 2));
+            break;
         }
-
-        if (typeof message === 'string') {
-          console.error(`Worker SQLite connection error: ${message}`);
-          this.#workerPromise = null;
-          reject(new Error(message));
-          return;
-        }
-
-        const { id, result } = message;
-
-        const callback = this.#queryCallbacks.get(id);
-
-        if (!callback) {
-          console.error(`Received query result for unknown query index: ${id}`);
-          return;
-        }
-
-        callback(result);
       };
       this.#worker.onready = () => {
-        this.#worker.postMessage(config);
+        this.#postRequest({
+          type: 'initialize',
+          config,
+        });
       };
     });
   }
 
-  async close(): Promise<void> {
-    this.#worker.terminate();
+  close(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const previousOnMessage = this.#worker.onmessage;
+
+      this.#worker.onmessage = (response: WorkerResponse) => {
+        if (response.type === 'terminated') {
+          try {
+            this.#worker.terminate();
+            resolve();
+          } catch (e: unknown) {
+            reject(e);
+          }
+        } else {
+          previousOnMessage?.(response);
+        }
+      };
+
+      this.#postRequest({
+        type: 'terminate',
+      });
+    });
   }
 
-  async #postQuery<R>(query: string, parameters: readonly unknown[]): Promise<QueryResult<R>> {
+  async #postQuery<R>(query: string, parameters: readonly unknown[] | GArray<unknown>): Promise<QueryResult<R>> {
     if (this.#workerPromise) {
       await this.#workerPromise;
     }
@@ -64,13 +115,19 @@ export class GodotSQLiteKyselyWorkerConnection implements DatabaseConnection {
         this.#queryCallbacks.delete(queryIndex);
 
         if (typeof result === 'string') {
-          reject(new Error(`${result}. Query: ${query} (${parameters.join(', ')}). `));
+          const params = Array.isArray(parameters) ? parameters : [...(parameters as GArray).proxy()];
+          reject(new Error(`${result}. Query: ${query} (${params.join(', ')}). `));
         } else {
           resolve(result as QueryResult<R>);
         }
       });
 
-      this.#worker.postMessage([queryIndex, query, parameters]);
+      this.#postRequest({
+        type: 'query',
+        id: queryIndex,
+        query,
+        parameters,
+      });
     });
   }
 

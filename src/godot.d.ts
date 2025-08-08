@@ -1,10 +1,10 @@
 interface Console {
-  assert(condition?: boolean, ...data: any[]): void;
-  debug(...data: any[]): void;
-  error(...data: any[]): void;
-  info(...data: any[]): void;
-  log(...data: any[]): void;
-  warn(...data: any[]): void;
+	assert(condition?: boolean, ...data: any[]): void;
+	debug(...data: any[]): void;
+	error(...data: any[]): void;
+	info(...data: any[]): void;
+	log(...data: any[]): void;
+	warn(...data: any[]): void;
 }
 declare const console: Console;
 
@@ -12,6 +12,7 @@ declare const console: Console;
 // Using godot.lib.api instead of godot so that this library is camel-case
 // binding agnostic.
 declare module 'godot.lib.api' {
+	type GAny = undefined | null | boolean | int64 | float64 | string | Vector2 | Vector2I | Rect2 | Rect2I | Vector3 | Vector3I | Transform2D | Vector4 | Vector4I | Plane | Quaternion | Aabb | Basis | Transform3D | Projection | Color | StringName | NodePath | Rid | GObject | Callable | Signal | GDictionary | GArray | PackedByteArray | PackedInt32Array | PackedInt64Array | PackedFloat32Array | PackedFloat64Array | PackedStringArray | PackedVector2Array | PackedVector3Array | PackedColorArray | PackedVector4Array;
 	type int64 = number; /* || bigint */
 	class Callable<T extends (...args: any[]) => any> {
 		call: T;
@@ -20,13 +21,40 @@ declare module 'godot.lib.api' {
 		get<K extends keyof T>(key: K, default_?: any /* = <any> {} */): T[K];
 		set<K extends keyof T>(key: K, value: T[K]): boolean;
 		keys(): GArray<keyof T>;
+		proxy<Write extends boolean = false>(): Write extends true ? GDictionaryProxy<T> : GDictionaryReadProxy<T>;
 	}
+	type GDictionaryProxy<T> = {
+		[K in keyof T]: T[K] | GProxyValueWrap<T[K]>;
+	};
+	type GDictionaryReadProxy<T> = {
+		[K in keyof T]: GReadProxyValueWrap<T[K]>;
+	};
 	class GArray<T = any> {
-    static create<T>(values: ReadonlyArray<T>): GArray<T>;
+		static create<T>(values: ReadonlyArray<T>): GArray<T>;
 		get(index: int64): T;
 		set(index: int64, value: T): void;
 		size(): int64;
+		proxy<Write extends boolean = false>(): Write extends true ? GArrayProxy<T> : GArrayReadProxy<T>;
 	}
+	class GArrayProxy<T> {
+		[Symbol.iterator](): IteratorObject<GProxyValueWrap<T>>;
+		[n: number]: T | GProxyValueWrap<T>;
+	}
+	type GArrayReadProxy<T> = Omit<GArrayProxy<T>, 'forEach'> & {
+		[Symbol.iterator](): IteratorObject<GReadProxyValueWrap<T>>;
+		[n: number]: GReadProxyValueWrap<T>;
+	}
+	type GProxyValueWrap<V> = V extends GArray<infer E>
+		? GArrayProxy<E>
+		: V extends GDictionary<infer T>
+			? GDictionaryProxy<T>
+			: V;
+	type GReadProxyValueWrap<V> = V extends GArray<infer E>
+		? GArrayReadProxy<E>
+		: V extends GDictionary<infer T>
+			? GDictionaryReadProxy<T>
+			: V;
+	class Object {}
 	namespace SQLite {
 		enum VerbosityLevel {
 			QUIET = 0,
@@ -208,25 +236,41 @@ declare module 'godot.lib.api' {
 	}
 }
 
-
 declare module "godot.worker" {
-  class JSWorker {
-    constructor(path: string);
+	import { GAny, GArray, Object as GObject } from 'godot.lib.api';
 
-    postMessage(message: any): void;
-    terminate(): void;
+	class JSWorker {
+		constructor(path: string);
 
-    onready?: () => void;
-    onmessage?: (message: any) => void;
-  }
+		postMessage(message: any, transfer?: GArray | ReadonlyArray<NonNullable<GAny>>): void;
+		terminate(): void;
 
-  // only available in worker scripts
-  const JSWorkerParent: {
-    onmessage?: (message: any) => void,
+		onready?: () => void;
+		onmessage?: (message: any) => void;
 
-    close(): void,
+		//TODO not implemented yet
+		onerror?: (error: any) => void;
 
-    postMessage(message: any): void,
-  } | undefined;
+		/**
+		 @deprecated Use onmessage to receive messages sent from postMessage() with transfers included.
+		 * @param obj
+		 */
+		ontransfer?: (obj: GObject) => void;
+	}
 
+	// only available in worker scripts
+	const JSWorkerParent: {
+		onmessage?: (message: any) => void,
+
+		close(): void,
+
+		/**
+		 * @deprecated Use the transfer parameter of postMessage() instead.
+		 * @param obj
+		 */
+		transfer(obj: GObject): void,
+
+		postMessage(message: any, transfer?: GArray | ReadonlyArray<NonNullable<GAny>>): void;
+
+	} | undefined;
 }
