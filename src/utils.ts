@@ -1,4 +1,4 @@
-import { GArray, GDictionary, SQLite } from 'godot.lib.api';
+import { GArray, GDictionary, SQLite, proxy } from 'godot.lib.api';
 import { GodotSQLiteKyselyConnectionConfig } from './types';
 
 export function createSQLiteConnection(config: GodotSQLiteKyselyConnectionConfig) {
@@ -19,7 +19,10 @@ export function createSQLiteConnection(config: GodotSQLiteKyselyConnectionConfig
 }
 
 export function getResultRows(client: SQLite) {
-  const results = client.query_result_by_reference as GArray<GDictionary<Record<string, unknown>>>;
+
+  // WARNING: It's quicker to unwrap the array, than individual values. DO NOT use multi-word APIs on results!
+  const results = proxy.proxy_unwrap_value(client.query_result_by_reference as GArray<GDictionary<Record<string, unknown>>>);
+
   const count = results.size();
 
   if (count === 0) {

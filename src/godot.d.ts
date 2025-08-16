@@ -234,6 +234,9 @@ declare module 'godot.lib.api' {
 		get query_result_by_reference(): GArray;
 		set query_result_by_reference(value: GArray);
 	}
+  const proxy: {
+    proxy_unwrap_value: <T>(value: T) => T;
+  };
 }
 
 declare module "godot.worker" {
