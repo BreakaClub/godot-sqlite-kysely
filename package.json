@@ -57,14 +57,14 @@
     "kysely": ">=0.26.0"
   },
   "devDependencies": {
-    "@types/node": "~22.14.0",
-    "eslint": "^9.31.0",
+    "@types/node": "~24.3.1",
+    "eslint": "^9.35.0",
     "eslint-config-prettier": "10.1.8",
-    "kysely": "^0.28.3",
-    "semantic-release": "^24.2.7",
-    "tsx": "^4.19.4",
-    "typescript": "^5.9.0-dev.20250614",
-    "typescript-eslint": "^8.38.0"
+    "kysely": "^0.28.5",
+    "semantic-release": "^24.2.8",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.43.0"
   },
   "repository": "github:BreakaClub/godot-sqlite-kysely"
 }
